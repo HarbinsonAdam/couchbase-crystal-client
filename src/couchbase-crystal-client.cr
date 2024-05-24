@@ -13,4 +13,11 @@ struct UUID
   end
 end
 
+module Couchbase
+  Habitat.create do
+    setting user : String = "admin"
+    setting password : String = "password"
+  end
+end
+
 require "./couchbase/**"
