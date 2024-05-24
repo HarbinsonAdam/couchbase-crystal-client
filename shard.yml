@@ -4,6 +4,10 @@ version: 0.1.0
 authors:
   - Adam Harbinson <tgferox@helixnet.co>
 
+dependencies:
+  habitat:
+    github: luckyframework/habitat
+
 crystal: '>= 1.10.1'
 
 license: MIT
