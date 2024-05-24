@@ -16,7 +16,7 @@ end
 
 module Couchbase
   Habitat.create do
-    setting user : String = "admin"
+    setting user : String = "Administrator"
     setting password : String = "password"
   end
 end
