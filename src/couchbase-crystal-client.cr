@@ -1,6 +1,7 @@
 require "json"
 require "http"
 require "uuid"
+require "habitat"
 
 struct UUID
   def self.new(pull : JSON::PullParser)
