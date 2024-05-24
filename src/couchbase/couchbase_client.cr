@@ -12,7 +12,9 @@ class CouchbaseClient
   end
 
   def perform
+    pp parameters
     res = write? ? perform_post : perform_get
+    pp res
     return CouchbaseResponse.from_json(res.body)
   end
 
