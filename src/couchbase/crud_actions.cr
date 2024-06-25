@@ -1,12 +1,21 @@
 module CrudActions
   extend self
 
+  def all(collection_name, fields : Array(String) = ["*"])
+    select_string = ""
+    fields.each do |v|
+      select_string += " #{v} "
+    end
+    
+    CouchbaseQuery.new(statement: "SELECT META().id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} document;")
+  end
+
   def insert(collection_name, values)
-    CouchbaseQuery.new(statement: "INSERT INTO #{collection_name} (KEY, VALUE) VALUES (UUID(), #{values.to_json}) RETURNING META().id as id, #{collection_name} as document;")
+    CouchbaseQuery.new(statement: "INSERT INTO #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} (KEY, VALUE) VALUES (UUID(), #{values.to_json}) RETURNING META().id as id, #{collection_name} as document;")
   end
 
   def update_by_id(collection_name, id, values)
-    statement = "UPDATE #{collection_name} USE KEYS \"#{id}\" SET "
+    statement = "UPDATE #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} USE KEYS \"#{id}\" SET "
     values.each do |key, value|
       statement += "#{key} = \"#{value}\", "
     end
@@ -16,9 +25,9 @@ module CrudActions
   end
 
   def update_where(collection_name, values, conditions)
-    statement = "UPDATE #{collection_name} SET "
+    statement = "UPDATE #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name}.#{collection_name} SET "
     values.each do |key, value|
-      statement += "#{key} = \"#{value}\", "
+      statement += "doucument.#{key} = \"#{value}\", "
     end
     statement = statement.chomp(", ")
     
@@ -32,12 +41,12 @@ module CrudActions
   end
 
   def delete_by_id(collection_name, id)
-    statement = "DELETE FROM #{collection_name} USE KEYS \"#{id}\" RETURNING META().id as id, #{collection_name} as document;"
+    statement = "DELETE FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} USE KEYS \"#{id}\" RETURNING META().id as id, #{collection_name} as document;"
     CouchbaseQuery.new(statement)
   end
 
   def delete_where(collection_name, conditions)
-    statement = "DELETE FROM #{collection_name} "
+    statement = "DELETE FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} "
 
     where_clause = conditions.map do |k, _|
       "#{k} =?"
@@ -53,21 +62,21 @@ module CrudActions
     fields.each do |v|
       select_string += " #{v} "
     end
-    CouchbaseQuery.new "SELECT META().id AS id, #{select_string} FROM #{collection_name} document USE KEYS \"#{id}\";"
+    CouchbaseQuery.new "SELECT META().id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} document USE KEYS \"#{id}\";"
   end
 
   def select_by(collection_name, conditions, fields : Array(String) = ["*"])
     select_string = ""
 
     fields.each do |v|
-      select_string += " #{v} "
+      select_string += " t.#{v} "
     end
 
     where_clause = conditions.map do |k, _|
-      "#{k} = ?"
+      "t.#{k} = ?"
     end.join(" AND ")
 
-    statement = "SELECT META().id AS id, #{select_string} FROM #{collection_name} document WHERE #{where_clause};"
+    statement = "SELECT META().id AS id, t as document FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} t WHERE #{where_clause};"
 
     CouchbaseQuery.new(statement: statement, args: JSON.parse(conditions.values.to_json))
   end
@@ -79,7 +88,7 @@ module CrudActions
       select_string += " #{v} "
     end
 
-    statement = "SELECT META().id AS id, #{select_string} FROM #{collection_name} document WHERE #{statement};"
+    statement = "SELECT META().id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} document WHERE #{statement};"
 
     CouchbaseQuery.new(statement: statement, args: JSON.parse(conditions.values.to_json))
   end

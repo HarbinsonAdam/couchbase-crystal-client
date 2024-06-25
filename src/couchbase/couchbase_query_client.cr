@@ -1,4 +1,4 @@
-class CouchbaseClient
+class CouchbaseQueryClient
   property parameters : CouchbaseQuery
   property? write : Bool = false
 
@@ -6,13 +6,13 @@ class CouchbaseClient
   HEADERS = HTTP::Headers{"Content-Type" => "application/json"}
 
   def initialize(@parameters : CouchbaseQuery, @write : Bool = false)
-    uri = URI.parse "http://127.0.0.1:8093"
+    uri = URI.parse "#{Couchbase.settings.use_tls ? "https" : "http"}://#{Couchbase.settings.db_host}:#{Couchbase.settings.db_query_port}"
     @client = HTTP::Client.new uri
     @client.basic_auth(Couchbase.settings.user, Couchbase.settings.password)
   end
 
   def perform
-    pp parameters
+    puts parameters
     res = write? ? perform_post : perform_get
     pp res
     return CouchbaseResponse.from_json(res.body)
