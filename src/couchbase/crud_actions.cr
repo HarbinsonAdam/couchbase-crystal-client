@@ -31,8 +31,12 @@ module CrudActions
     end
     statement = statement.chomp(", ")
     
-    where_clause = conditions.map do |k, _|
-      "#{k} =?"
+    where_clause = conditions.map do |k, v|
+      if v.is_a?(Array)
+        "#{k} in ?"
+      else
+        "#{k} = ?"
+      end
     end.join(" AND ")
     
     statement += " WHERE #{where_clause} RETURNING META().id as id, #{collection_name} as document;"
@@ -48,8 +52,12 @@ module CrudActions
   def delete_where(collection_name, conditions)
     statement = "DELETE FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} "
 
-    where_clause = conditions.map do |k, _|
-      "#{k} =?"
+    where_clause = conditions.map do |k, v|
+      if v.is_a?(Array)
+        "#{k} in ?"
+      else
+        "#{k} = ?"
+      end
     end.join(" AND ")
     
     statement += " WHERE #{where_clause} RETURNING META().id as id, #{collection_name} as document;"
@@ -72,8 +80,12 @@ module CrudActions
       select_string += " t.#{v} "
     end
 
-    where_clause = conditions.map do |k, _|
-      "t.#{k} = ?"
+    where_clause = conditions.map do |k, v|
+      if v.is_a?(Array)
+        "#{k} in ?"
+      else
+        "#{k} = ?"
+      end
     end.join(" AND ")
 
     statement = "SELECT META().id AS id, t as document FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} t WHERE #{where_clause};"
