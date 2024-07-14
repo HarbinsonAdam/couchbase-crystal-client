@@ -18,7 +18,11 @@ module CrudActions
     statement = "UPDATE #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} USE KEYS \"#{id}\" SET "
     values.each do |key, value|
       next if key.to_s == "id"
-      statement += "#{key} = \"#{value}\", "
+      if value.is_a?(Int)
+        statement += "#{key} = #{value}, "
+      else
+        statement += "#{key} = \"#{value}\", "
+      end
     end
     statement = statement.chomp(", ") + " RETURNING META().id as id, #{collection_name} as document;"
     
@@ -29,7 +33,11 @@ module CrudActions
     statement = "UPDATE #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name}.#{collection_name} SET "
     values.each do |key, value|
       next if key.to_s == "id"
-      statement += "doucument.#{key} = \"#{value}\", "
+      if value.is_a?(Int)
+        statement += "#{key} = #{value}, "
+      else
+        statement += "#{key} = \"#{value}\", "
+      end
     end
     statement = statement.chomp(", ")
     
