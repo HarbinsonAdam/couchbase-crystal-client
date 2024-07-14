@@ -17,7 +17,7 @@ module CrudActions
   def update_by_id(collection_name, id, values)
     statement = "UPDATE #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} USE KEYS \"#{id}\" SET "
     values.each do |key, value|
-      next if key == "id"
+      next if key.to_s == "id"
       statement += "#{key} = \"#{value}\", "
     end
     statement = statement.chomp(", ") + " RETURNING META().id as id, #{collection_name} as document;"
@@ -28,7 +28,7 @@ module CrudActions
   def update_where(collection_name, values, conditions)
     statement = "UPDATE #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name}.#{collection_name} SET "
     values.each do |key, value|
-      next if key == "id"
+      next if key.to_s == "id"
       statement += "doucument.#{key} = \"#{value}\", "
     end
     statement = statement.chomp(", ")
