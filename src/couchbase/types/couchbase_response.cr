@@ -13,7 +13,7 @@ struct CouchbaseResponse
     json = JSON.parse(json_string)
     new(
       request_id: UUID.from_json(json["requestID"].to_json),
-      results: json["results"]? ? json["results"].as_a.map{|r| CouchbaseResult.from_json(r.to_json)} : Array(CouchbaseResult).new,
+      results: json["results"]? ? json["results"].as_a.map{|r| CouchbaseResult.from_db(r.to_json)}.compact : Array(CouchbaseResult).new,
       errors: json["errors"]? ? json["errors"].as_a.map{|e| CouchbaseError.from_json(e.to_json)} : Array(CouchbaseError).new,
     )
   end
@@ -39,13 +39,34 @@ struct CouchbaseResult
   include JSON::Serializable
 
   getter id : UUID
-  getter document : JSON::Any
+  getter document : Hash(String, JSON::Any)
+
+  def initialize(@id, @document); end
+
+  def self.from_db(string_or_io)
+    document = Hash(String, JSON::Any).new
+    id = nil
+    parser = JSON::PullParser.new(string_or_io)
+    parser.read_object do |key|
+      pp key
+      case key
+      when "id"
+        id = UUID.new(parser.read_string)
+      else
+        pp "meh"
+        document[key] = JSON.parse(parser.read_raw)
+        pp "meh"
+      end
+    end
+
+    self.new(id, document) unless id.nil?
+  end
 
   def to_record
     JSON.build do |json|
       json.object do
         json.field("id", id)
-        document.as_h.each do |key, value|
+        document.each do |key, value|
           json.field(key, value)
         end
       end
