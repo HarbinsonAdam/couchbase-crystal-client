@@ -13,9 +13,7 @@ class CouchbaseGetBucketClient
   end
 
   def perform
-    pp endpoint
     res = @client.get(endpoint, HEADERS)
-    pp res
     return res
   end
 

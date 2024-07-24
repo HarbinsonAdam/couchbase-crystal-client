@@ -12,7 +12,6 @@ class CouchbaseGetScopesClient
   end
 
   def perform
-    pp endpoint
     res = @client.get(endpoint, HEADERS)
     return CouchbaseScopeResponse.from_json(res.body)
   end

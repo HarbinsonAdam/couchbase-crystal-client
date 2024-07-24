@@ -2,6 +2,7 @@ require "json"
 require "http"
 require "uuid"
 require "habitat"
+require "log"
 
 struct UUID
   def self.new(pull : JSON::PullParser)
@@ -25,6 +26,8 @@ module Couchbase
     setting bucket_name : String = "test_bucket1234"
     setting scope_name : String = "test_scope"
   end
+
+  Log = ::Log.for("couchbase")
 end
 
 require "./couchbase/**"

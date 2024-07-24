@@ -14,12 +14,7 @@ class CouchbaseCreateBucketClient
   end
 
   def perform
-    pp parameters.to_query_params
-    pp @client
-    pp "sending to #{endpoint}"
     res = @client.post(endpoint, HEADERS, body: parameters.to_query_params)
-    pp res
-    return res
   end
 
   private def endpoint

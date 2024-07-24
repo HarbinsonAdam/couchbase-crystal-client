@@ -12,10 +12,13 @@ class CouchbaseQueryClient
   end
 
   def perform
-    puts parameters
+    Log.debug{"SQL #{parameters}"}
+    start_time = Time.monotonic
     res = write? ? perform_post : perform_get
-    pp res
-    return CouchbaseResponse.from_json(res.body)
+    elapsed_time = Time.monotonic - start_time
+    formatted_response = CouchbaseResponse.from_json(res.body)
+    Log.debug{"SQL (#{elapsed_time.microseconds/1000}ms) #{formatted_response.filtered_records}"}
+    return formatted_response
   end
 
   private def perform_get

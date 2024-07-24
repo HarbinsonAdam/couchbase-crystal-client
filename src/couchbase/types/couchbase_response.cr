@@ -1,9 +1,12 @@
 struct CouchbaseResponse
   include JSON::Serializable
 
+  SENSITIVE_KEYS = ["first_name", "last_name"]
+
   getter request_id : UUID
   getter results : Array(CouchbaseResult)
   getter errors : Array(CouchbaseError)
+  getter records : Array(String)?
 
   def initialize(@request_id : UUID, @results : Array(CouchbaseResult), @errors : Array(CouchbaseError))
     # Initialize fields here if necessary
@@ -19,6 +22,22 @@ struct CouchbaseResponse
   end
 
   def get_records
+    @records ||= records
+  end
+
+  def filtered_records
+    get_records.map do |record|
+      hash = Hash(String, JSON::Any | String).from_json(record)
+      hash.each do |key, value|
+        if SENSITIVE_KEYS.includes?(key)
+          hash[key] = "***masked***"
+        end
+      end
+      hash
+    end.to_json
+  end
+
+  private def records
     records = [] of String
     JSON.build do |json|
       json.array do
@@ -48,14 +67,11 @@ struct CouchbaseResult
     id = nil
     parser = JSON::PullParser.new(string_or_io)
     parser.read_object do |key|
-      pp key
       case key
       when "id"
         id = UUID.new(parser.read_string)
       else
-        pp "meh"
         document[key] = JSON.parse(parser.read_raw)
-        pp "meh"
       end
     end
 
