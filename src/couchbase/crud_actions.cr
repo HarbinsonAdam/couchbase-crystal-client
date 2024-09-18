@@ -48,7 +48,7 @@ module CrudActions
     statement = statement.chomp(", ")
     
     where_clause = conditions.map do |k, v|
-      key = k.to_s == "id" ? "META(t).id" : "`#{k}`"
+      key = k.to_s == "id" ? "META(#{collection_name}).id" : "`#{k}`"
       if v.is_a?(Array)
         "#{key} in ?"
       else
@@ -70,7 +70,7 @@ module CrudActions
     statement = "DELETE FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} "
 
     where_clause = conditions.map do |k, v|
-      key = k.to_s == "id" ? "META(t).id" : "`#{k}`"
+      key = k.to_s == "id" ? "META(#{collection_name}).id" : "`#{k}`"
       if v.is_a?(Array)
         "#{key} in ?"
       else
@@ -109,7 +109,7 @@ module CrudActions
     end
 
     where_clause = conditions.map do |k, v|
-      key = k.to_s == "id" ? "META(t).id" : "`#{k}`"
+      key = k.to_s == "id" ? "META(#{collection_name}).id" : "`#{k}`"
       if v.is_a?(Array)
         "#{key} in ?"
       else
