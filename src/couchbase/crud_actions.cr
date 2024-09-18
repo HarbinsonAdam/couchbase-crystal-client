@@ -3,8 +3,13 @@ module CrudActions
 
   def all(collection_name, fields : Array(String) = ["*"])
     select_string = ""
+
     fields.each do |v|
-      select_string += " #{collection_name}.`#{v}` "
+      if v == "*"
+        select_string += " #{collection_name}.#{v} "
+      else
+        select_string += " #{collection_name}.`#{v}` "
+      end
     end
     
     CouchbaseQuery.new(statement: "SELECT META().id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name};")
@@ -31,6 +36,7 @@ module CrudActions
 
   def update_where(collection_name, values, conditions)
     statement = "UPDATE #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name}.#{collection_name} SET "
+
     values.each do |key, value|
       next if key.to_s == "id"
       if value.is_a?(Int)
@@ -79,13 +85,15 @@ module CrudActions
 
   def select_by_id(collection_name, id, fields : Array(String) = ["*"])
     select_string = ""
+
     fields.each do |v|
-      if v === "*"
+      if v == "*"
         select_string += " #{collection_name}.#{v} "
       else
         select_string += " #{collection_name}.`#{v}` "
       end
     end
+
     CouchbaseQuery.new "SELECT META().id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} USE KEYS \"#{id}\";"
   end
 
@@ -93,7 +101,11 @@ module CrudActions
     select_string = ""
 
     fields.each do |v|
-      select_string += " #{collection_name}.`#{v}` "
+      if v == "*"
+        select_string += " #{collection_name}.#{v} "
+      else
+        select_string += " #{collection_name}.`#{v}` "
+      end
     end
 
     where_clause = conditions.map do |k, v|
@@ -114,7 +126,7 @@ module CrudActions
     select_string = ""
 
     fields.each do |v|
-      if v === "*"
+      if v == "*"
         select_string += " #{collection_name}.#{v} "
       else
         select_string += " #{collection_name}.`#{v}` "
