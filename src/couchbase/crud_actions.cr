@@ -42,11 +42,11 @@ module CrudActions
     statement = statement.chomp(", ")
     
     where_clause = conditions.map do |k, v|
-      key = k.to_s == "id" ? "META(t).id" : k
+      key = k.to_s == "id" ? "META(t).id" : "`#{k}`"
       if v.is_a?(Array)
-        "`#{key}` in ?"
+        "#{key} in ?"
       else
-        "`#{key}` = ?"
+        "#{key} = ?"
       end
     end.join(" AND ")
     
@@ -80,7 +80,11 @@ module CrudActions
   def select_by_id(collection_name, id, fields : Array(String) = ["*"])
     select_string = ""
     fields.each do |v|
-      select_string += " #{collection_name}.`#{v}` "
+      if v === "*"
+        select_string += " #{collection_name}.#{v} "
+      else
+        select_string += " #{collection_name}.`#{v}` "
+      end
     end
     CouchbaseQuery.new "SELECT META().id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} USE KEYS \"#{id}\";"
   end
@@ -110,7 +114,11 @@ module CrudActions
     select_string = ""
 
     fields.each do |v|
-      select_string += " #{collection_name}.`#{v}` "
+      if v === "*"
+        select_string += " #{collection_name}.#{v} "
+      else
+        select_string += " #{collection_name}.`#{v}` "
+      end
     end
 
     statement = "SELECT META().id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} WHERE #{statement};"
