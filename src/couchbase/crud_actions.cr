@@ -72,9 +72,9 @@ module CrudActions
     where_clause = conditions.map do |k, v|
       key = k.to_s == "id" ? "META(t).id" : "`#{k}`"
       if v.is_a?(Array)
-        "`#{key}` in ?"
+        "#{key} in ?"
       else
-        "`#{key}` = ?"
+        "#{key} = ?"
       end
     end.join(" AND ")
     
@@ -111,9 +111,9 @@ module CrudActions
     where_clause = conditions.map do |k, v|
       key = k.to_s == "id" ? "META(t).id" : "`#{k}`"
       if v.is_a?(Array)
-        "`#{key}` in ?"
+        "#{key} in ?"
       else
-        "`#{key}` = ?"
+        "#{key} = ?"
       end
     end.join(" AND ")
 
