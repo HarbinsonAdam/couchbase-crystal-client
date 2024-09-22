@@ -23,15 +23,11 @@ module CrudActions
     statement = "UPDATE #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} USE KEYS \"#{id}\" SET "
     values.each do |key, value|
       next if key.to_s == "id"
-      if value.is_a?(Int)
-        statement += "`#{key}` = #{value}, "
-      else
-        statement += "`#{key}` = \"#{value}\", "
-      end
+      statement += "`#{key}` = #{value.to_json}, "
     end
     statement = statement.chomp(", ") + " RETURNING META().id, #{collection_name}.*;"
     
-    CouchbaseQuery.new(statement: statement, args: JSON.parse(values.values.to_json))
+    CouchbaseQuery.new(statement: statement)
   end
 
   def update_where(collection_name, values, conditions)
@@ -39,11 +35,7 @@ module CrudActions
 
     values.each do |key, value|
       next if key.to_s == "id"
-      if value.is_a?(Int)
-        statement += "`#{key}` = #{value}, "
-      else
-        statement += "`#{key}` = \"#{value}\", "
-      end
+      statement += "`#{key}` = #{value.to_json}, "
     end
     statement = statement.chomp(", ")
     
