@@ -1,4 +1,4 @@
-class CouchbaseQueryClient
+class Couchbase::CouchbaseQueryClient
   property parameters : CouchbaseQuery
   property? write : Bool = false
 
@@ -12,7 +12,7 @@ class CouchbaseQueryClient
   end
 
   def perform
-    Log.debug{"SQL #{parameters}"}
+    Log.debug{"SQL #{parameters.statement} #{parameters.args ? parameters.args : ""}"}
     start_time = Time.monotonic
     res = write? ? perform_post : perform_get
     elapsed_time = Time.monotonic - start_time

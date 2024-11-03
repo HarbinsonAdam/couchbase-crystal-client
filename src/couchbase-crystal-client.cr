@@ -15,6 +15,17 @@ struct UUID
   end
 end
 
+module Couchbase::Log
+  # ANSI color codes
+  BLUE = "\e[34m"  # for info and debug messages
+  RESET = "\e[0m"   # to reset color after the message
+
+  # Debug log method (green text)
+  def self.debug(&)
+    ::Log.debug { "#{BLUE}#{yield}#{RESET}" }
+  end
+end
+
 module Couchbase
   Habitat.create do
     setting user : String = "Administrator"
@@ -26,8 +37,6 @@ module Couchbase
     setting bucket_name : String = "test_bucket1234"
     setting scope_name : String = "test_scope"
   end
-
-  Log = ::Log.for("couchbase")
 end
 
 require "./couchbase/**"
