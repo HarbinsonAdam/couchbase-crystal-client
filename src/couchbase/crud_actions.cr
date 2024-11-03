@@ -1,8 +1,8 @@
 module CrudActions
   extend self
 
-  def all(collection_name, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"])
-    select_string = gen_search_string(fields, collection_name)
+  def all(collection_name, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String)
+    select_string = gen_search_string(fields, collection_name, excluded_fields)
     
     CouchbaseQuery.new(statement: "SELECT META().id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name};")
   end
@@ -67,14 +67,14 @@ module CrudActions
     CouchbaseQuery.new(statement: statement, args: process_args(conditions.values))
   end
 
-  def select_by_id(collection_name, id, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"])
-    select_string = gen_search_string(fields, collection_name)
+  def select_by_id(collection_name, id, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String)
+    select_string = gen_search_string(fields, collection_name, excluded_fields)
 
     CouchbaseQuery.new "SELECT META().id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} USE KEYS \"#{id}\";"
   end
 
-  def select_by(collection_name, conditions, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"])
-    select_string = gen_search_string(fields, collection_name)
+  def select_by(collection_name, conditions, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String)
+    select_string = gen_search_string(fields, collection_name, excluded_fields)
 
     where_clause = conditions.map do |k, v|
       key = k.to_s == "id" ? "META(#{collection_name}).id" : "`#{k}`"
@@ -90,8 +90,8 @@ module CrudActions
     CouchbaseQuery.new(statement: statement, args: process_args(conditions.values))
   end
 
-  def select(collection_name, statement, args, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"])
-    select_string = gen_search_string(fields, collection_name)
+  def select(collection_name, statement, args, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String)
+    select_string = gen_search_string(fields, collection_name, excluded_fields)
 
     statement = "SELECT META().id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} WHERE #{statement};"
 
@@ -104,27 +104,33 @@ module CrudActions
     )
   end
 
-  private def gen_search_string(fields, collection_name)
+  private def gen_search_string(fields, collection_name, excluded_fields)
     select_string = ""
 
-    fields.each do |v|
-      if v.is_a?(Hash)
-        v.each do |inner_k, inner_v|
-          values = [] of String
-          if inner_v.is_a?(String)
-            values << "'#{inner_v}': #{collection_name}.`#{inner_k}`.`#{inner_v}` "
-          else
-            inner_v.each do |inner_innver_v|
-              values << "'#{inner_innver_v}': #{collection_name}.`#{inner_k}`.`#{inner_innver_v}` "
+    if excluded_fields.empty?
+      fields.each do |v|
+        if v.is_a?(Hash)
+          v.each do |inner_k, inner_v|
+            values = [] of String
+            if inner_v.is_a?(String)
+              values << "'#{inner_v}': #{collection_name}.`#{inner_k}`.`#{inner_v}` "
+            else
+              inner_v.each do |inner_innver_v|
+                values << "'#{inner_innver_v}': #{collection_name}.`#{inner_k}`.`#{inner_innver_v}` "
+              end
             end
+            select_string += "{#{values.join(",")}} as #{inner_k} "
           end
-          select_string += "{#{values.join(",")}} as #{inner_k} "
+        elsif v == "*"
+          select_string += " #{collection_name}.#{v} "
+        else
+          select_string += " #{collection_name}.`#{v}` "
         end
-      elsif v == "*"
-        select_string += " #{collection_name}.#{v} "
-      else
-        select_string += " #{collection_name}.`#{v}` "
       end
+    else
+      excluded_fields_str = excluded_fields.map { |field| "'#{field}'" }.join(", ")
+
+      select_string += "(OBJECT_REMOVE(#{collection_name}, #{excluded_fields_str})).*"
     end
 
     return select_string
