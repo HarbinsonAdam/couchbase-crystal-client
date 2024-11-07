@@ -1,10 +1,14 @@
 module CrudActions
   extend self
 
-  def all(collection_name, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String)
+  def all(collection_name, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String, joins : Array(Couchbase::Join) = [] of Couchbase::Join)
     select_string = gen_search_string(fields, collection_name, excluded_fields)
+    group_by_string = "GROUP BY META(#{collection_name}).id, "
+    group_by_string += select_string unless joins.empty?
+    select_string += gen_join_selects(joins) unless joins.empty?
+    join_string = gen_join_string(joins)
     
-    CouchbaseQuery.new(statement: "SELECT META().id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name};")
+    CouchbaseQuery.new(statement: "SELECT META(#{collection_name}).id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} #{join_string} #{joins.empty? ? "" : group_by_string};")
   end
 
   def insert(collection_name, values)
@@ -67,14 +71,22 @@ module CrudActions
     CouchbaseQuery.new(statement: statement, args: process_args(conditions.values))
   end
 
-  def select_by_id(collection_name, id, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String)
+  def select_by_id(collection_name, id, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String, joins : Array(Couchbase::Join) = [] of Couchbase::Join)
     select_string = gen_search_string(fields, collection_name, excluded_fields)
+    group_by_string = "GROUP BY META(#{collection_name}).id, "
+    group_by_string += select_string unless joins.empty?
+    select_string += gen_join_selects(joins) unless joins.empty?
+    join_string = gen_join_string(joins)
 
-    CouchbaseQuery.new "SELECT META().id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} USE KEYS \"#{id}\";"
+    CouchbaseQuery.new "SELECT META(#{collection_name}).id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} #{join_string} USE KEYS \"#{id}\" #{joins.empty? ? "" : group_by_string};"
   end
 
-  def select_by(collection_name, conditions, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String)
+  def select_by(collection_name, conditions, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String, joins : Array(Couchbase::Join) = [] of Couchbase::Join)
     select_string = gen_search_string(fields, collection_name, excluded_fields)
+    group_by_string = "GROUP BY META(#{collection_name}).id, "
+    group_by_string += select_string unless joins.empty?
+    select_string += gen_join_selects(joins) unless joins.empty?
+    join_string = gen_join_string(joins)
 
     where_clause = conditions.map do |k, v|
       key = k.to_s == "id" ? "META(#{collection_name}).id" : "`#{k}`"
@@ -85,15 +97,19 @@ module CrudActions
       end
     end.join(" AND ")
 
-    statement = "SELECT META().id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} WHERE #{where_clause};"
+    statement = "SELECT META(#{collection_name}).id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} #{join_string} WHERE #{where_clause} #{joins.empty? ? "" : group_by_string};"
 
     CouchbaseQuery.new(statement: statement, args: process_args(conditions.values))
   end
 
-  def select(collection_name, statement, args, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String)
+  def select(collection_name, statement, args, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String, joins : Array(Couchbase::Join) = [] of Couchbase::Join)
     select_string = gen_search_string(fields, collection_name, excluded_fields)
+    group_by_string = "GROUP BY META(#{collection_name}).id, "
+    group_by_string += select_string unless joins.empty?
+    select_string += gen_join_selects(joins) unless joins.empty?
+    join_string = gen_join_string(joins)
 
-    statement = "SELECT META().id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} WHERE #{statement};"
+    statement = "SELECT META(#{collection_name}).id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} #{join_string} WHERE #{statement} #{joins.empty? ? "" : group_by_string};"
 
     CouchbaseQuery.new(statement: statement, args: process_args(conditions.values))
   end
@@ -105,7 +121,7 @@ module CrudActions
   end
 
   private def gen_search_string(fields, collection_name, excluded_fields)
-    select_string = ""
+    select_fields = [] of String
 
     if excluded_fields.empty?
       fields.each do |v|
@@ -119,20 +135,47 @@ module CrudActions
                 values << "'#{inner_innver_v}': #{collection_name}.`#{inner_k}`.`#{inner_innver_v}` "
               end
             end
-            select_string += "{#{values.join(",")}} as #{inner_k} "
+            select_fields <<"{#{values.join(",")}} as #{inner_k}"
           end
         elsif v == "*"
-          select_string += " #{collection_name}.#{v} "
+          select_fields << "#{collection_name}.#{v}"
+        elsif v == "id"
+          next
         else
-          select_string += " #{collection_name}.`#{v}` "
+          select_fields << "#{collection_name}.`#{v}`"
         end
       end
     else
       excluded_fields_str = excluded_fields.map { |field| "'#{field}'" }.join(", ")
 
-      select_string += "(OBJECT_REMOVE(#{collection_name}, #{excluded_fields_str})).*"
+      select_fields << "(OBJECT_REMOVE(#{collection_name}, #{excluded_fields_str})).*"
     end
 
-    return select_string
+    select_fields.join(", ")
+  end
+
+  private def gen_join_selects(joins)
+    join_select_string = [] of String
+
+    joins.each do |join|
+      join_select_string << "COALESCE(ARRAY_AGG(OBJECT_CONCAT({'id': META(#{join.join_2_name}).id}, #{join.join_2_name})), []) AS #{join.join_name}" if join.relationship_type == Couchbase::Join::RelationshipType::MANY
+      join_select_string << "ARRAY_AGG(OBJECT_CONCAT({'id': META(#{join.join_2_name}).id}, #{join.join_2_name}))[0] AS #{join.join_name}" if join.relationship_type == Couchbase::Join::RelationshipType::ONE
+    end
+
+    return ", #{join_select_string.join(", ")} "
+  end
+
+  private def gen_join_string(joins)
+    return "" unless joins.size
+
+    join_string = [] of String
+
+    joins.each do |join|
+      destination_join = join.join_2_field == "id" ? "META(#{join.join_2_name}).id" : "#{join.join_2_name}.#{join.join_2_field}"
+      origin_join = join.join_1_field == "id" ? "META(#{join.join_1_name}).id" : "#{join.join_1_name}.#{join.join_1_field}"
+      join_string << "#{join.join_type.to_s} JOIN #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{join.join_2_name} ON #{destination_join} = #{origin_join}"
+    end
+
+    join_string.join(" ")
   end
 end
