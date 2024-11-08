@@ -1,14 +1,18 @@
 module CrudActions
   extend self
 
-  def all(collection_name, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String, joins : Array(Couchbase::Join) = [] of Couchbase::Join)
+  def all(collection_name, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String, limit : Int32 = 0, offset : Int32 = 0, joins : Array(Couchbase::Join) = [] of Couchbase::Join)
     select_string = gen_search_string(fields, collection_name, excluded_fields)
     group_by_string = "GROUP BY META(#{collection_name}).id, "
     group_by_string += select_string unless joins.empty?
     select_string += gen_join_selects(joins) unless joins.empty?
     join_string = gen_join_string(joins)
+
+    limit_string = ""
+
+    limit_string += " LIMIT #{limit} OFFSET #{offset}"if limit > 0
     
-    CouchbaseQuery.new(statement: "SELECT META(#{collection_name}).id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} #{join_string} #{joins.empty? ? "" : group_by_string};")
+    CouchbaseQuery.new(statement: "SELECT META(#{collection_name}).id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} #{join_string} #{joins.empty? ? "" : group_by_string}#{limit_string};")
   end
 
   def insert(collection_name, values)
@@ -81,7 +85,7 @@ module CrudActions
     CouchbaseQuery.new "SELECT META(#{collection_name}).id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} #{join_string} USE KEYS \"#{id}\" #{joins.empty? ? "" : group_by_string};"
   end
 
-  def select_by(collection_name, conditions, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String, joins : Array(Couchbase::Join) = [] of Couchbase::Join)
+  def select_by(collection_name, conditions, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String, limit : Int32 = 0, offset : Int32 = 0, joins : Array(Couchbase::Join) = [] of Couchbase::Join)
     select_string = gen_search_string(fields, collection_name, excluded_fields)
     group_by_string = "GROUP BY META(#{collection_name}).id, "
     group_by_string += select_string unless joins.empty?
@@ -97,19 +101,27 @@ module CrudActions
       end
     end.join(" AND ")
 
-    statement = "SELECT META(#{collection_name}).id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} #{join_string} WHERE #{where_clause} #{joins.empty? ? "" : group_by_string};"
+    limit_string = ""
+
+    limit_string += " LIMIT #{limit} OFFSET #{offset}"if limit > 0
+
+    statement = "SELECT META(#{collection_name}).id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} #{join_string} WHERE #{where_clause} #{joins.empty? ? "" : group_by_string}#{limit_string};"
 
     CouchbaseQuery.new(statement: statement, args: process_args(conditions.values))
   end
 
-  def select(collection_name, statement, args, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String, joins : Array(Couchbase::Join) = [] of Couchbase::Join)
+  def select(collection_name, statement, args, fields : Array(String | Hash(String, String) | Hash(String, Array(String))) = ["*"], excluded_fields : Array(String) = [] of String, limit : Int32 = 0, offset : Int32 = 0, joins : Array(Couchbase::Join) = [] of Couchbase::Join)
     select_string = gen_search_string(fields, collection_name, excluded_fields)
     group_by_string = "GROUP BY META(#{collection_name}).id, "
     group_by_string += select_string unless joins.empty?
     select_string += gen_join_selects(joins) unless joins.empty?
     join_string = gen_join_string(joins)
 
-    statement = "SELECT META(#{collection_name}).id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} #{join_string} WHERE #{statement} #{joins.empty? ? "" : group_by_string};"
+    limit_string = ""
+
+    limit_string += " LIMIT #{limit} OFFSET #{offset}"if limit > 0
+
+    statement = "SELECT META(#{collection_name}).id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} #{join_string} WHERE #{statement} #{joins.empty? ? "" : group_by_string}#{limit_string};"
 
     CouchbaseQuery.new(statement: statement, args: process_args(conditions.values))
   end
