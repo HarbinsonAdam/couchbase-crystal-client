@@ -36,7 +36,60 @@ module Couchbase
     setting use_tls : Bool = false
     setting bucket_name : String = "test_bucket1234"
     setting scope_name : String = "test_scope"
+    setting connection_pool_size : Int32 = 4
+  end
+
+  @@http_pool : HttpClientPool? = nil
+
+  def self.setup_http_client_pool
+    uri = URI.parse("#{Couchbase.settings.use_tls ? "https" : "http"}://#{Couchbase.settings.db_host}:#{Couchbase.settings.db_query_port}")
+    @@http_pool ||= HttpClientPool.new(Couchbase.settings.connection_pool_size, uri, Couchbase.settings.user, Couchbase.settings.password)
+  end
+
+  def self.http_client_pool : HttpClientPool
+    @@http_pool || (raise "HTTP client pool not initialized. Call `Couchbase.setup_http_client_pool` first.")
   end
 end
+
+require "http/client"
+require "mutex"
+
+class HttpClientPool
+  def initialize(pool_size : Int32, uri : URI, username : String, password : String)
+    @pool_size = pool_size
+    @uri = uri
+    @username = username
+    @password = password
+    @pool = Channel(HTTP::Client).new(pool_size)
+
+    @pool_size.times do
+      client = create_client
+      @pool.send(client)
+    end
+  end
+
+  def with_client
+    client = @pool.receive
+    begin
+      yield client
+    ensure
+      @pool.send(client)
+    end
+  end
+
+  def close
+    @pool_size.times do
+      client = @pool.receive
+      client.close
+    end
+  end
+
+  private def create_client : HTTP::Client
+    client = HTTP::Client.new(@uri)
+    client.basic_auth(@username, @password)
+    client
+  end
+end
+
 
 require "./couchbase/**"
