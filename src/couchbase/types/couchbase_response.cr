@@ -1,8 +1,6 @@
 struct CouchbaseResponse
   include JSON::Serializable
 
-  SENSITIVE_KEYS = ["first_name", "last_name"]
-
   getter request_id : UUID
   getter results : Array(CouchbaseResult)
   getter errors : Array(CouchbaseError)
@@ -29,7 +27,7 @@ struct CouchbaseResponse
     get_records.map do |record|
       hash = Hash(String, JSON::Any | String).from_json(record)
       hash.each do |key, value|
-        if SENSITIVE_KEYS.includes?(key)
+        if Couchbase.settings.sensitive_keys.includes?(key)
           hash[key] = "***masked***"
         end
       end

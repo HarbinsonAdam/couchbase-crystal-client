@@ -37,6 +37,7 @@ module Couchbase
     setting bucket_name : String = "test_bucket1234"
     setting scope_name : String = "test_scope"
     setting connection_pool_size : Int32 = 4
+    setting sensitive_keys : Array(String) = [] of String
   end
 
   @@http_pool : HttpClientPool? = nil
