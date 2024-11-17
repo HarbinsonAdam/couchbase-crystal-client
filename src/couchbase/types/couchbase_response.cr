@@ -55,25 +55,31 @@ end
 struct CouchbaseResult
   include JSON::Serializable
 
-  getter id : UUID
+  getter id : UUID?
   getter document : Hash(String, JSON::Any)
+  getter txid : UUID?
 
-  def initialize(@id, @document); end
+  def initialize(@id : UUID, @document : Hash(String, JSON::Any)); end
+  def initialize(@document : Hash(String, JSON::Any), @txid : UUID); end
 
   def self.from_db(string_or_io)
     document = Hash(String, JSON::Any).new
     id = nil
+    txid = nil
     parser = JSON::PullParser.new(string_or_io)
     parser.read_object do |key|
       case key
       when "id"
         id = UUID.new(parser.read_string)
+      when "txid"
+        txid = UUID.new(parser.read_string)
       else
         document[key] = JSON.parse(parser.read_raw)
       end
     end
 
-    self.new(id, document) unless id.nil?
+    return self.new(id, document) unless id.nil?
+    return self.new(document, txid) unless txid.nil?
   end
 
   def to_record
