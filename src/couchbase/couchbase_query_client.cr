@@ -17,7 +17,10 @@ class Couchbase::CouchbaseQueryClient
 
     elapsed_time = Time.monotonic - start_time
     formatted_response = CouchbaseResponse.from_json(response_body)
-    Log.debug { "SQL (#{elapsed_time.microseconds / 1000}ms) #{formatted_response.filtered_records}" }
+    formatted_response.errors.map do |err|
+      Log.error { "Query Error {Code: #{err.code}, Message: '#{err.msg}'#{err.line ? " Line: #{err.line}" : ""}#{err.column ? " Column: #{err.column}" : ""}}" }
+    end
+    Log.debug { "SQL (#{elapsed_time.microseconds / 1000}ms) #{formatted_response.filtered_records}" } if formatted_response.errors.empty?
     return formatted_response
   end
 

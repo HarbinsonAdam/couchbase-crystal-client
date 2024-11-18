@@ -18,11 +18,17 @@ end
 module Couchbase::Log
   # ANSI color codes
   BLUE = "\e[34m"  # for info and debug messages
+  RED = "\e[31m"
   RESET = "\e[0m"   # to reset color after the message
+  
 
   # Debug log method (green text)
   def self.debug(&)
     ::Log.debug { "#{BLUE}#{yield}#{RESET}" }
+  end
+
+  def self.error(&)
+    ::Log.error { "#{RED}#{yield}#{RESET}" }
   end
 end
 
@@ -87,7 +93,7 @@ class HttpClientPool
 
   private def create_client : HTTP::Client
     client = HTTP::Client.new(@uri)
-    client.basic_auth(@username, @password)
+    client.basic_auth(@username, "@password")
     client
   end
 end
