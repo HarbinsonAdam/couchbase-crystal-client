@@ -93,7 +93,7 @@ class HttpClientPool
 
   private def create_client : HTTP::Client
     client = HTTP::Client.new(@uri)
-    client.basic_auth(@username, "@password")
+    client.basic_auth(@username, @password)
     client
   end
 end
