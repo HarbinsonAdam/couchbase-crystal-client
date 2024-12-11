@@ -135,7 +135,7 @@ module CrudActions
 
     statement = "SELECT META(#{collection_name}).id AS id, #{select_string} FROM #{Couchbase.settings.bucket_name}.#{Couchbase.settings.scope_name}.#{collection_name} #{join_string} WHERE #{statement} #{joins.empty? ? "" : group_by_string}#{limit_string};"
 
-    CouchbaseQuery.new(statement: statement, args: process_args(conditions.values))
+    CouchbaseQuery.new(statement: statement, args: process_args(args))
   end
 
   private def process_args(args)
